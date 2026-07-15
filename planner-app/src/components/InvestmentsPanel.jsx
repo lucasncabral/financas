@@ -239,7 +239,7 @@ function InvestmentCard({ inv, onUpdate, onRequestRemove, onToggleHidden, contri
               Este investimento está oculto - ele não entra nos totais da Projeção nem do Resumo. Útil pra isolar um investimento específico (ex: conferir se o saldo de um CDB bate com o do banco) sem o ruído dos outros.
             </p>
           )}
-          <div className="investment-row" style={{ border: 'none', padding: 0, gridTemplateColumns: '1.3fr 0.9fr 0.8fr 0.8fr 0.9fr' }}>
+          <div className="investment-row" style={{ border: 'none', padding: 0 }}>
             <label className="field">
               <span>Nome</span>
               <input value={inv.name} onChange={(e) => onUpdate({ name: e.target.value })} />
