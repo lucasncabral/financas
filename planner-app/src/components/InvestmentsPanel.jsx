@@ -340,7 +340,16 @@ function InvestmentCard({ inv, onUpdate, onRequestRemove, onToggleHidden, contri
 }
 
 export default function InvestmentsPanel({ investments, onChange, contributions, onContributionsChange, currentBalances = {}, grossBalances = {} }) {
-  const totalInvested = contributions.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+  // Mesmo saldo "valor hoje" mostrado em cada card (e usado pela Distribuição) -
+  // não a soma bruta dos aportes, senão esse total não bate com o resto do app.
+  const totalInvested = investments.reduce((s, inv) => {
+    const balance = currentBalances[inv.id];
+    if (balance != null) return s + balance;
+    const registered = contributions
+      .filter((c) => c.investmentId === inv.id)
+      .reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+    return s + registered;
+  }, 0);
   const [lastAddedId, setLastAddedId] = useState(null);
   const [removeTarget, setRemoveTarget] = useState(null); // { kind: 'investment' | 'contribution', ... }
 
