@@ -1,12 +1,37 @@
 import { formatBRL, formatPct, parseISODate } from '../lib/finance';
 import { monthsToYearsLabel, remainingTimeLabel } from '../lib/projection';
 
-function Tile({ label, value, sub }) {
+function Tile({ label, value, sub, delta }) {
   return (
     <div className="stat-tile">
       <div className="label">{label}</div>
       <div className="value">{value}</div>
       {sub && <div className="sub">{sub}</div>}
+      {delta}
+    </div>
+  );
+}
+
+function monthsDurationLabel(m) {
+  const years = Math.floor(m / 12);
+  const rem = m % 12;
+  const parts = [];
+  if (years > 0) parts.push(`${years} ${years === 1 ? 'ano' : 'anos'}`);
+  if (rem > 0 || years === 0) parts.push(`${rem} ${rem === 1 ? 'mês' : 'meses'}`);
+  return parts.join(' e ');
+}
+
+// Compara o mês em que a meta foi batida no resultado real com o mês
+// previsto na projeção original - mostra quanto tempo isso representa de
+// adiantamento/atraso. Sem exibição em caso de empate.
+function GoalTimingDelta({ actualMonth, projMonth }) {
+  if (actualMonth == null || projMonth == null) return null;
+  const diff = projMonth - actualMonth;
+  if (diff === 0) return null;
+  const isAhead = diff > 0;
+  return (
+    <div className={`goal-progress-delta ${isAhead ? 'good' : 'critical'}`}>
+      {isAhead ? '▲' : '▼'} {monthsDurationLabel(Math.abs(diff))} {isAhead ? 'adiantado' : 'atrasado'}
     </div>
   );
 }
@@ -52,6 +77,8 @@ function GoalProgress({ pct, monthLabel, sub, projPct, projBalance, baseYear }) 
 
 export default function SummaryCards({ result, projectionResult, settings, currentMonthIndex }) {
   const { goalNominal, goalReal, rows } = result;
+  const projGoalNominal = projectionResult?.goalNominal;
+  const projGoalReal = projectionResult?.goalReal;
   const last = rows[rows.length - 1];
   const baseYear = parseISODate(settings.startDate).getFullYear();
 
@@ -73,12 +100,14 @@ export default function SummaryCards({ result, projectionResult, settings, curre
         <Tile
           label="Meta atingida (saldo nominal)"
           value={remainingTimeLabel(goalNominal?.month, currentMonthIndex)}
-          sub={goalNominal ? `De: ${monthsToYearsLabel(goalNominal.month)} · mês ${goalNominal.month} · ${goalNominal.date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })}` : undefined}
+          sub={projGoalNominal ? `De: ${monthsToYearsLabel(projGoalNominal.month)} · mês ${projGoalNominal.month} · ${projGoalNominal.date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })}` : undefined}
+          delta={<GoalTimingDelta actualMonth={goalNominal?.month} projMonth={projGoalNominal?.month} />}
         />
         <Tile
           label={`Meta atingida (líquido de IR, valor de ${baseYear})`}
           value={remainingTimeLabel(goalReal?.month, currentMonthIndex)}
-          sub={goalReal ? `De: ${monthsToYearsLabel(goalReal.month)} · mês ${goalReal.month} · ${goalReal.date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })}` : undefined}
+          sub={projGoalReal ? `De: ${monthsToYearsLabel(projGoalReal.month)} · mês ${projGoalReal.month} · ${projGoalReal.date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })}` : undefined}
+          delta={<GoalTimingDelta actualMonth={goalReal?.month} projMonth={projGoalReal?.month} />}
         />
         <Tile
           label={`Saldo projetado ao fim de ${settings.horizonYears} anos`}
