@@ -1,4 +1,4 @@
-import { annualToMonthly, monthlyReturnRate, incomeTaxRate, monthKey, addMonths, parseISODate } from './finance';
+import { annualToMonthly, monthlyReturnRate, incomeTaxRate, monthKey, addMonths, parseISODate, daysInMonth } from './finance';
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
@@ -25,12 +25,18 @@ function getIndicesForMonth(date, settings, realData) {
 }
 
 // Agrupa os aportes registrados (lançamentos manuais) por mês e investimento.
+// Guarda tanto o total do mês (usado pro saldo/base de custo) quanto o dia
+// exato de cada lançamento (usado pro rendimento pro-rata - ver simulate()).
 function indexContributions(contributions) {
   const idx = {};
   (contributions || []).forEach((c) => {
-    const key = monthKey(parseISODate(c.date));
+    const date = parseISODate(c.date);
+    const key = monthKey(date);
+    const amount = Number(c.amount) || 0;
     if (!idx[key]) idx[key] = {};
-    idx[key][c.investmentId] = (idx[key][c.investmentId] || 0) + (Number(c.amount) || 0);
+    if (!idx[key][c.investmentId]) idx[key][c.investmentId] = { total: 0, events: [] };
+    idx[key][c.investmentId].total += amount;
+    idx[key][c.investmentId].events.push({ day: date.getDate(), amount });
   });
   return idx;
 }
@@ -42,9 +48,12 @@ function indexContributions(contributions) {
 //   investido em cada aplicação - é a linha "Projetado", o plano original.
 // mode 'actual': para meses já vividos (até `todayMonthIndex`), usa somente os
 //   aportes que você registrou manualmente (data + valor) em cada investimento
-//   - mês sem lançamento não recebe aporte novo. Para meses futuros, cai de
-//   volta no aporte teórico (mesma regra do modo 'plan'), já que ainda não
-//   aconteceram e não há o que registrar.
+//   - mês sem lançamento não recebe aporte novo. Cada lançamento rende
+//   pro-rata pelo dia exato em que entrou (ou saiu, no caso de saque) dentro
+//   do mês - ver o cálculo de `interest` no loop de investimentos. Para meses
+//   futuros, cai de volta no aporte teórico (mesma regra do modo 'plan'), já
+//   que ainda não aconteceram e não há o que registrar (nem dia exato pra
+//   pro-ratear).
 //
 // realData (opcional): { "2026-07": { ipca, cdi, selic }, ... } - quando fornecido,
 // meses com dado real usam o valor real de IPCA/CDI/Selic; os demais usam a média assumida.
@@ -80,15 +89,18 @@ export function simulate(settings, investments, { realData = null, contributions
     const plannedContribution = settings.monthlyContribution * Math.pow(1 + nominalGrowthMonthly, m - 1);
 
     let contributionShares;
+    let flowEvents = null; // eventos com dia exato (só existem no modo 'actual') - ver rendimento pro-rata abaixo
     if (mode === 'actual' && m <= todayMonthIndex) {
       const logged = contribByMonth[monthKey(date)] || {};
-      contributionShares = investments.map((inv) => logged[inv.id] || 0);
+      contributionShares = investments.map((inv) => logged[inv.id]?.total || 0);
+      flowEvents = investments.map((inv) => logged[inv.id]?.events || []);
     } else {
       const total = invBalances.reduce((a, b) => a + b, 0);
       contributionShares = total > 0
         ? invBalances.map((b) => (b / total) * plannedContribution)
         : investments.map(() => plannedContribution / (investments.length || 1));
     }
+    const dim = daysInMonth(date);
 
     let monthInterest = 0;
     let nominalTotal = 0;
@@ -98,7 +110,16 @@ export function simulate(settings, investments, { realData = null, contributions
       const grossRate = monthlyReturnRate(inv, indices, date);
       const feeMonthly = inv.custodyFeeAnnual ? annualToMonthly(inv.custodyFeeAnnual) : 0;
       const rate = grossRate - feeMonthly;
-      const interest = invBalances[i] * rate;
+      let interest = invBalances[i] * rate;
+      // Pro-rata: cada lançamento (aporte ou saque) do mês só rende pela fração
+      // do mês em que o dinheiro esteve de fato na carteira. Um aporte no dia D
+      // rende (diasDoMês - D + 1)/diasDoMês desse mês; um saque no dia D "devolve"
+      // proporcionalmente os juros do saldo cheio que já tinham sido creditados
+      // pra ele em `invBalances[i] * rate` acima (mesma fórmula, valor negativo).
+      (flowEvents?.[i] || []).forEach(({ day, amount }) => {
+        const fractionRemaining = (dim - day + 1) / dim;
+        interest += amount * rate * fractionRemaining;
+      });
       const balanceBeforeFlow = invBalances[i] + interest;
       invBalances[i] = balanceBeforeFlow + contributionShares[i];
       monthInterest += interest;

@@ -104,3 +104,7 @@ export function parseISODate(iso) {
 export function monthIndexFor(startDate, date) {
   return (date.getFullYear() - startDate.getFullYear()) * 12 + (date.getMonth() - startDate.getMonth()) + 1;
 }
+
+export function daysInMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+}

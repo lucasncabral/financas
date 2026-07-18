@@ -73,12 +73,11 @@ export default function ProjectView({ projectId, onBack }) {
   );
 
   // Saldo líquido (já descontado o IR estimado) e bruto por investimento até o
-  // fechamento do mês atual na simulação (inclui ocultos). A simulação credita
-  // o rendimento em blocos mensais (não dia a dia) - um aporte só passa a
-  // render a partir do mês em que ele entra ser fechado, então esse valor é
-  // uma aproximação por mês fechado, não um cálculo pró-rata diário. O saldo
-  // bruto é usado pra converter um saque (informado em valor líquido) no
-  // aporte negativo equivalente - ver InvestmentsPanel.
+  // fechamento do mês atual na simulação (inclui ocultos). Dentro do mês em
+  // que entra, um aporte rende pro-rata pelo dia exato do lançamento (e um
+  // saque só deixa de render a partir do dia em que saiu) - ver `simulate()`
+  // em projection.js. O saldo bruto é usado pra converter um saque (informado
+  // em valor líquido) no aporte negativo equivalente - ver InvestmentsPanel.
   const { currentBalanceByInvestment, grossBalanceByInvestment } = useMemo(() => {
     const result = simulate(data.settings, data.investments, {
       realData: data.realData,
