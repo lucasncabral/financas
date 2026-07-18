@@ -75,8 +75,13 @@ function GoalProgress({ pct, monthLabel, sub, projPct, projBalance, baseYear }) 
   );
 }
 
-export default function SummaryCards({ result, projectionResult, settings, currentMonthIndex }) {
-  const { goalNominal, goalReal, rows } = result;
+export default function SummaryCards({ result, hybridResult, projectionResult, settings, currentMonthIndex }) {
+  const { rows } = result;
+  // Os cards "Meta atingida" (quanto falta / quanto adiantado) usam o
+  // Projetado ajustado, não o Real - ver ProjectView.jsx. O Real continua
+  // usado pro resto (progresso da meta hoje, saldo/aporte ao fim do horizonte).
+  const goalNominal = hybridResult?.goalNominal;
+  const goalReal = hybridResult?.goalReal;
   const projGoalNominal = projectionResult?.goalNominal;
   const projGoalReal = projectionResult?.goalReal;
   const last = rows[rows.length - 1];

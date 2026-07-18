@@ -1,4 +1,4 @@
-import { annualToMonthly, monthlyReturnRate, incomeTaxRate, monthKey, addMonths, parseISODate, daysInMonth } from './finance';
+import { annualToMonthly, monthlyReturnRate, defaultReinvestRate, incomeTaxRate, monthKey, addMonths, parseISODate, daysInMonth } from './finance';
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
@@ -44,16 +44,35 @@ function indexContributions(contributions) {
 // Simula a carteira mês a mês.
 //
 // mode 'plan' (padrão): usa o aporte teórico (cresce com inflação + crescimento
-//   real definidos em Parâmetros) e o distribui proporcionalmente ao saldo já
-//   investido em cada aplicação - é a linha "Projetado", o plano original.
+//   real definidos em Parâmetros) - é a linha "Projetado", o plano original.
+//   Esse aporte não pertence a nenhum investimento específico (não faz sentido
+//   assumir por décadas a taxa de um produto que você tem hoje, tipo uma
+//   oferta promocional de banco) - ele é simulado como uma única aplicação
+//   genérica rendendo a taxa padrão de reinvestimento (IPCA + 5% a.a., a
+//   mesma usada em `defaultReinvestRate` quando um título vence sem taxa
+//   contratada), tributada pela tabela regressiva normal.
 // mode 'actual': para meses já vividos (até `todayMonthIndex`), usa somente os
 //   aportes que você registrou manualmente (data + valor) em cada investimento
 //   - mês sem lançamento não recebe aporte novo. Cada lançamento rende
 //   pro-rata pelo dia exato em que entrou (ou saiu, no caso de saque) dentro
-//   do mês - ver o cálculo de `interest` no loop de investimentos. Para meses
-//   futuros, cai de volta no aporte teórico (mesma regra do modo 'plan'), já
-//   que ainda não aconteceram e não há o que registrar (nem dia exato pra
-//   pro-ratear).
+//   do mês - ver o cálculo de `interest` no loop de investimentos. Os
+//   investimentos já cadastrados continuam rendendo a taxa própria deles pra
+//   sempre (não somem, não consolidam) - só não recebem mais nenhum aporte
+//   novo depois de `todayMonthIndex`. Todo aporte teórico futuro (que ainda
+//   não existe de verdade) vai pra uma aplicação genérica separada
+//   (`__generic_future__`), rendendo IPCA+5% - já que não faz sentido supor
+//   que um aporte que você ainda nem fez vai cair num produto específico que
+//   você tem hoje.
+// mode 'hybrid' ("Projetado ajustado" na UI): igual ao 'actual' até
+//   `todayMonthIndex` (mesmos aportes reais, nos mesmos investimentos, com as
+//   taxas reais deles). No mês seguinte a hoje, o saldo (e a base de custo/
+//   idade média, pro IR) de todos os investimentos reais é consolidado numa
+//   única aplicação genérica (`__generic_future__`) - as taxas contratadas de
+//   cada investimento deixam de valer a partir daí. Dali pra frente, só essa
+//   aplicação genérica existe: cresce a IPCA+5% (igual o modo 'plan') e
+//   recebe todo aporte teórico futuro. Diferença pro 'actual': lá o saldo já
+//   investido continua rendendo a taxa própria de cada investimento pra
+//   sempre; aqui ele também vira genérico a partir de hoje.
 //
 // realData (opcional): { "2026-07": { ipca, cdi, selic }, ... } - quando fornecido,
 // meses com dado real usam o valor real de IPCA/CDI/Selic; os demais usam a média assumida.
@@ -71,13 +90,25 @@ export function simulate(settings, investments, { realData = null, contributions
   const startDate = parseISODate(settings.startDate);
   const months = settings.horizonYears * 12;
   const nominalGrowthMonthly = ((1 + settings.assumedInflationAnnual) * (1 + settings.contributionRealGrowthAnnual)) ** (1 / 12) - 1;
-  const contribByMonth = mode === 'actual' ? indexContributions(contributions) : null;
+  const contribByMonth = (mode === 'actual' || mode === 'hybrid') ? indexContributions(contributions) : null;
+
+  // No modo 'plan' simulamos uma única aplicação genérica (ver comentário
+  // acima) em vez dos investimentos cadastrados. Nos modos 'actual' e
+  // 'hybrid' mantemos os investimentos reais (pro trecho já vivido) e
+  // acrescentamos essa mesma aplicação genérica só pra receber o aporte
+  // teórico futuro - a diferença entre os dois é só se o saldo já investido
+  // consolida pra genérico também ('hybrid') ou não ('actual').
+  const simInvestments = mode === 'plan'
+    ? [{ id: 'generic-plan', isGeneric: true }]
+    : (mode === 'hybrid' || mode === 'actual')
+      ? [...investments, { id: '__generic_future__', isGeneric: true }]
+      : investments;
 
   // Todo saldo entra via aporte registrado (inclusive o valor "inicial") - a
   // carteira sempre começa zerada e cresce só pelos aportes + rendimentos.
-  const invBalances = investments.map(() => 0);
-  const costBasis = investments.map(() => 0); // total aportado (sem rendimento) por investimento
-  const weightedTimeSum = investments.map(() => 0); // soma(valor_aporte * timestamp) p/ idade média ponderada
+  const invBalances = simInvestments.map(() => 0);
+  const costBasis = simInvestments.map(() => 0); // total aportado (sem rendimento) por investimento
+  const weightedTimeSum = simInvestments.map(() => 0); // soma(valor_aporte * timestamp) p/ idade média ponderada
   let cumInflation = 1;
   let cumContribution = 0;
 
@@ -88,26 +119,47 @@ export function simulate(settings, investments, { realData = null, contributions
     const indices = getIndicesForMonth(date, settings, realData);
     const plannedContribution = settings.monthlyContribution * Math.pow(1 + nominalGrowthMonthly, m - 1);
 
+    if (mode === 'hybrid' && m === todayMonthIndex + 1) {
+      // Consolidação única: tudo que os investimentos reais têm acumulado até
+      // aqui (saldo, base de custo, idade média ponderada) migra pra
+      // aplicação genérica, e eles zeram - a partir deste mês só ela existe.
+      const genericIndex = simInvestments.findIndex((inv) => inv.isGeneric);
+      simInvestments.forEach((inv, i) => {
+        if (inv.isGeneric) return;
+        invBalances[genericIndex] += invBalances[i];
+        costBasis[genericIndex] += costBasis[i];
+        weightedTimeSum[genericIndex] += weightedTimeSum[i];
+        invBalances[i] = 0;
+        costBasis[i] = 0;
+        weightedTimeSum[i] = 0;
+      });
+    }
+
     let contributionShares;
-    let flowEvents = null; // eventos com dia exato (só existem no modo 'actual') - ver rendimento pro-rata abaixo
-    if (mode === 'actual' && m <= todayMonthIndex) {
+    let flowEvents = null; // eventos com dia exato (só existem nos modos 'actual'/'hybrid', no trecho já vivido) - ver rendimento pro-rata abaixo
+    if ((mode === 'actual' || mode === 'hybrid') && m <= todayMonthIndex) {
       const logged = contribByMonth[monthKey(date)] || {};
-      contributionShares = investments.map((inv) => logged[inv.id]?.total || 0);
-      flowEvents = investments.map((inv) => logged[inv.id]?.events || []);
+      contributionShares = simInvestments.map((inv) => logged[inv.id]?.total || 0);
+      flowEvents = simInvestments.map((inv) => logged[inv.id]?.events || []);
+    } else if (mode === 'hybrid' || mode === 'actual') {
+      // Futuro nos modos 'hybrid'/'actual': nenhum aporte novo pros
+      // investimentos reais - tudo vai pra aplicação genérica (ver comentário
+      // de simInvestments acima).
+      contributionShares = simInvestments.map((inv) => (inv.isGeneric ? plannedContribution : 0));
     } else {
       const total = invBalances.reduce((a, b) => a + b, 0);
       contributionShares = total > 0
         ? invBalances.map((b) => (b / total) * plannedContribution)
-        : investments.map(() => plannedContribution / (investments.length || 1));
+        : simInvestments.map(() => plannedContribution / (simInvestments.length || 1));
     }
     const dim = daysInMonth(date);
 
     let monthInterest = 0;
     let nominalTotal = 0;
     let netTotal = 0;
-    const taxByInvestment = investments.map(() => 0);
-    investments.forEach((inv, i) => {
-      const grossRate = monthlyReturnRate(inv, indices, date);
+    const taxByInvestment = simInvestments.map(() => 0);
+    simInvestments.forEach((inv, i) => {
+      const grossRate = inv.isGeneric ? defaultReinvestRate(indices) : monthlyReturnRate(inv, indices, date);
       const feeMonthly = inv.custodyFeeAnnual ? annualToMonthly(inv.custodyFeeAnnual) : 0;
       const rate = grossRate - feeMonthly;
       let interest = invBalances[i] * rate;
@@ -169,13 +221,14 @@ export function simulate(settings, investments, { realData = null, contributions
       cumContribution,
       cumInterest: nominalTotal - cumContribution,
       taxPaid: nominalTotal - netTotal,
+      cumInflation,
       pctOfGoal: realTotal / settings.goal,
       isReal: indices.isReal,
       partial: indices.partial,
       ipca: indices.ipca,
       cdi: indices.cdi,
       selic: indices.selic,
-      perInvestment: investments.map((inv, i) => ({
+      perInvestment: simInvestments.map((inv, i) => ({
         id: inv.id,
         balance: invBalances[i],
         netBalance: invBalances[i] - taxByInvestment[i],
@@ -187,6 +240,18 @@ export function simulate(settings, investments, { realData = null, contributions
   const goalReal = rows.find((r) => r.realBalance >= settings.goal) || null;
 
   return { rows, goalNominal, goalReal };
+}
+
+// Mês em que o saldo bruto (nominal) alcança o equivalente - corrigido pela
+// inflação acumulada até ali - da meta declarada "em valor de {baseYear}".
+// Ex: com 5% de inflação a.a., R$3.000.000 daqui a 20 anos só valem o que
+// ~R$1.100.000 valem hoje, então bater literalmente R$3.000.000 nominais não
+// é "bater a meta" de verdade. Usado só pra marcar a bolinha no gráfico
+// "Saldo nominal" - não mexe em `goalNominal` (usado no card "Meta atingida
+// (saldo nominal)"), que de propósito compara contra o número fixo da meta.
+export function findInflationAdjustedGoalMonth(rows, goal) {
+  const row = rows.find((r) => r.nominalBalance >= goal * r.cumInflation);
+  return row?.month ?? null;
 }
 
 export function monthsToYearsLabel(m) {

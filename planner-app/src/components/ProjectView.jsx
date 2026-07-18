@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { loadProjectData, saveProjectData, exportJSON, importJSON, sanitizeFilename } from '../lib/storage';
-import { simulate } from '../lib/projection';
+import { simulate, findInflationAdjustedGoalMonth } from '../lib/projection';
 import { fetchRealData } from '../lib/bcb';
 import { monthIndexFor, parseISODate } from '../lib/finance';
 import { getProjectMeta, renameProject } from '../lib/projects';
@@ -71,6 +71,19 @@ export default function ProjectView({ projectId, onBack }) {
     }),
     [data.settings, visibleInvestments, data.realData, data.contributions, currentMonthIndex]
   );
+  // "Projetado ajustado": real até hoje (mesmos aportes/investimentos da linha Real),
+  // e daqui pra frente projeta como aplicação genérica IPCA+5% (mesma taxa do
+  // modo 'plan') em vez de continuar nos investimentos cadastrados - ver
+  // mode 'hybrid' em projection.js.
+  const hybridResult = useMemo(
+    () => simulate(data.settings, visibleInvestments, {
+      realData: data.realData,
+      contributions: data.contributions,
+      mode: 'hybrid',
+      todayMonthIndex: currentMonthIndex,
+    }),
+    [data.settings, visibleInvestments, data.realData, data.contributions, currentMonthIndex]
+  );
 
   // Saldo líquido (já descontado o IR estimado) e bruto por investimento até o
   // fechamento do mês atual na simulação (inclui ocultos). Dentro do mês em
@@ -95,6 +108,7 @@ export default function ProjectView({ projectId, onBack }) {
   const chartData = useMemo(() => {
     return projectionResult.rows.map((r, i) => {
       const realRow = realResult.rows[i];
+      const hybridRow = hybridResult.rows[i];
       return {
         month: r.month,
         label: r.date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
@@ -102,9 +116,29 @@ export default function ProjectView({ projectId, onBack }) {
         projReal: r.realBalance,
         realNominal: realRow.nominalBalance,
         realReal: realRow.realBalance,
+        proj2Nominal: hybridRow.nominalBalance,
+        proj2Real: hybridRow.realBalance,
       };
     });
-  }, [projectionResult, realResult]);
+  }, [projectionResult, realResult, hybridResult]);
+
+  // Mês (1-indexado) em que cada linha bate a meta, pra marcar a bolinha nos
+  // gráficos - um valor por linha, um conjunto pro gráfico nominal e outro
+  // pro gráfico líquido de IR/inflação (metas diferentes: nominalBalance vs realBalance).
+  // No gráfico nominal, a bolinha usa o equivalente corrigido pela inflação
+  // acumulada (não o `goalNominal` cru usado no card "Meta atingida (saldo
+  // nominal)"), senão ela marcaria o saldo batendo R$ 3.000.000 nominais
+  // fixos, que não é o mesmo que bater a meta declarada em valor de hoje.
+  const goalMonthsNominal = useMemo(() => ({
+    proj: findInflationAdjustedGoalMonth(projectionResult.rows, data.settings.goal),
+    real: findInflationAdjustedGoalMonth(realResult.rows, data.settings.goal),
+    proj2: findInflationAdjustedGoalMonth(hybridResult.rows, data.settings.goal),
+  }), [projectionResult, realResult, hybridResult, data.settings.goal]);
+  const goalMonthsReal = useMemo(() => ({
+    proj: projectionResult.goalReal?.month ?? null,
+    real: realResult.goalReal?.month ?? null,
+    proj2: hybridResult.goalReal?.month ?? null,
+  }), [projectionResult, realResult, hybridResult]);
 
   const handleFetchReal = async () => {
     setFetching(true);
@@ -182,9 +216,15 @@ export default function ProjectView({ projectId, onBack }) {
 
       {tab === 'Resumo' && (
         <>
-          <SummaryCards result={realResult} projectionResult={projectionResult} settings={data.settings} currentMonthIndex={currentMonthIndex} />
+          <SummaryCards result={realResult} hybridResult={hybridResult} projectionResult={projectionResult} settings={data.settings} currentMonthIndex={currentMonthIndex} />
           <div style={{ height: 20 }} />
-          <ProjectionChart chartData={chartData} goal={data.settings.goal} baseYear={baseYear} />
+          <ProjectionChart
+            chartData={chartData}
+            goal={data.settings.goal}
+            baseYear={baseYear}
+            goalMonthsNominal={goalMonthsNominal}
+            goalMonthsReal={goalMonthsReal}
+          />
         </>
       )}
 

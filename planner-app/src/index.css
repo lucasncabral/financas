@@ -10,6 +10,7 @@
   --border: rgba(11, 11, 11, 0.10);
   --series-projetado: #2a78d6;
   --series-real: #008300;
+  --series-projetado2: #8a63d2;
   --series-3: #e87ba4;
   --series-4: #eda100;
   --good: #006300;
@@ -31,6 +32,7 @@
     --border: rgba(255, 255, 255, 0.10);
     --series-projetado: #3987e5;
     --series-real: #008300;
+    --series-projetado2: #a586e0;
     --series-3: #d55181;
     --series-4: #c98500;
     --good: #0ca30c;
