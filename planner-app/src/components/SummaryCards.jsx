@@ -82,8 +82,10 @@ export default function SummaryCards({ result, hybridResult, projectionResult, s
   // usado pro resto (progresso da meta hoje, saldo/aporte ao fim do horizonte).
   const goalNominal = hybridResult?.goalNominal;
   const goalReal = hybridResult?.goalReal;
+  const goalRealGross = hybridResult?.goalRealGross;
   const projGoalNominal = projectionResult?.goalNominal;
   const projGoalReal = projectionResult?.goalReal;
+  const projGoalRealGross = projectionResult?.goalRealGross;
   const last = rows[rows.length - 1];
   const baseYear = parseISODate(settings.startDate).getFullYear();
 
@@ -94,11 +96,11 @@ export default function SummaryCards({ result, hybridResult, projectionResult, s
   return (
     <>
       <GoalProgress
-        pct={currentRow.pctOfGoal}
+        pct={currentRow.pctOfGoalGross}
         monthLabel={currentRow.date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
-        sub={`Saldo líquido de IR (valor de ${baseYear}): ${formatBRL(currentRow.realBalance)} de ${formatBRL(settings.goal)}`}
-        projPct={projRow?.pctOfGoal}
-        projBalance={projRow?.realBalance}
+        sub={`Saldo sem desconto de IR (valor de ${baseYear}): ${formatBRL(currentRow.realBalanceGross)} de ${formatBRL(settings.goal)}`}
+        projPct={projRow?.pctOfGoalGross}
+        projBalance={projRow?.realBalanceGross}
         baseYear={baseYear}
       />
       <div className="stat-grid">
@@ -109,15 +111,16 @@ export default function SummaryCards({ result, hybridResult, projectionResult, s
           delta={<GoalTimingDelta actualMonth={goalNominal?.month} projMonth={projGoalNominal?.month} />}
         />
         <Tile
+          label={`Meta atingida (sem IR, valor de ${baseYear})`}
+          value={remainingTimeLabel(goalRealGross?.month, currentMonthIndex)}
+          sub={projGoalRealGross ? `De: ${monthsToYearsLabel(projGoalRealGross.month)} · mês ${projGoalRealGross.month} · ${projGoalRealGross.date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })}` : undefined}
+          delta={<GoalTimingDelta actualMonth={goalRealGross?.month} projMonth={projGoalRealGross?.month} />}
+        />
+        <Tile
           label={`Meta atingida (líquido de IR, valor de ${baseYear})`}
           value={remainingTimeLabel(goalReal?.month, currentMonthIndex)}
           sub={projGoalReal ? `De: ${monthsToYearsLabel(projGoalReal.month)} · mês ${projGoalReal.month} · ${projGoalReal.date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })}` : undefined}
           delta={<GoalTimingDelta actualMonth={goalReal?.month} projMonth={projGoalReal?.month} />}
-        />
-        <Tile
-          label={`Saldo projetado ao fim de ${settings.horizonYears} anos`}
-          value={formatBRL(last.nominalBalance)}
-          sub={`Líquido de IR, valor de ${baseYear}: ${formatBRL(last.realBalance)}`}
         />
         <Tile
           label="Total aportado no período"

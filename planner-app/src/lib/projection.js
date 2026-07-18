@@ -4,7 +4,7 @@ const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
 // Retorna os índices (mensais, decimais) para um mês: usa dado real se existir,
 // senão cai para a média assumida.
-function getIndicesForMonth(date, settings, realData) {
+export function getIndicesForMonth(date, settings, realData) {
   const key = monthKey(date);
   const real = realData?.[key];
   const assumed = {
@@ -85,7 +85,10 @@ function indexContributions(contributions) {
 // pela tabela regressiva, usando a idade média ponderada pelos valores
 // aportados como aproximação do tempo de aplicação (sem rastrear cada aporte
 // individualmente). Investimentos com `taxExempt` (poupança, LCI/LCA...) não
-// pagam nada. `realBalance` (base da meta) já sai líquida de IR e de inflação.
+// pagam nada. `realBalance` (base da meta) já sai líquida de IR e de inflação;
+// `realBalanceGross` é o mesmo valor de hoje (já descontada a inflação), mas
+// sem descontar o IR estimado - útil pra quem quer acompanhar a meta sem
+// entrar no mérito de quanto viraria imposto.
 export function simulate(settings, investments, { realData = null, contributions = null, mode = 'plan', todayMonthIndex = Infinity } = {}) {
   const startDate = parseISODate(settings.startDate);
   const months = settings.horizonYears * 12;
@@ -207,6 +210,7 @@ export function simulate(settings, investments, { realData = null, contributions
     cumInflation *= 1 + indices.ipca;
 
     const realTotal = netTotal / cumInflation;
+    const realTotalGross = nominalTotal / cumInflation; // valor de hoje, mas sem descontar IR
 
     rows.push({
       month: m,
@@ -218,11 +222,13 @@ export function simulate(settings, investments, { realData = null, contributions
       nominalBalance: nominalTotal,
       netBalance: netTotal,
       realBalance: realTotal,
+      realBalanceGross: realTotalGross,
       cumContribution,
       cumInterest: nominalTotal - cumContribution,
       taxPaid: nominalTotal - netTotal,
       cumInflation,
       pctOfGoal: realTotal / settings.goal,
+      pctOfGoalGross: realTotalGross / settings.goal,
       isReal: indices.isReal,
       partial: indices.partial,
       ipca: indices.ipca,
@@ -238,8 +244,9 @@ export function simulate(settings, investments, { realData = null, contributions
 
   const goalNominal = rows.find((r) => r.nominalBalance >= settings.goal) || null;
   const goalReal = rows.find((r) => r.realBalance >= settings.goal) || null;
+  const goalRealGross = rows.find((r) => r.realBalanceGross >= settings.goal) || null;
 
-  return { rows, goalNominal, goalReal };
+  return { rows, goalNominal, goalReal, goalRealGross };
 }
 
 // Mês em que o saldo bruto (nominal) alcança o equivalente - corrigido pela

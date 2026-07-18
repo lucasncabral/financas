@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { loadProjectData, saveProjectData, exportJSON, importJSON, sanitizeFilename } from '../lib/storage';
-import { simulate, findInflationAdjustedGoalMonth } from '../lib/projection';
+import { simulate, findInflationAdjustedGoalMonth, getIndicesForMonth } from '../lib/projection';
 import { fetchRealData } from '../lib/bcb';
-import { monthIndexFor, parseISODate } from '../lib/finance';
+import { monthIndexFor, parseISODate, monthlyReturnRate, annualToMonthly, daysInMonth } from '../lib/finance';
 import { getProjectMeta, renameProject } from '../lib/projects';
 import SettingsPanel from './SettingsPanel';
 import InvestmentsPanel from './InvestmentsPanel';
@@ -105,6 +105,31 @@ export default function ProjectView({ projectId, onBack }) {
     return { currentBalanceByInvestment: net, grossBalanceByInvestment: gross };
   }, [data.settings, data.investments, data.realData, data.contributions, currentMonthIndex]);
 
+  // Valor de saque que precisa ser registrado hoje pra zerar cada investimento
+  // de verdade (saldo final = 0), não `grossBalanceByInvestment` puro. Esse
+  // saldo bruto é o saldo de *fechamento do mês* (a simulação é mensal); um
+  // saque datado de hoje, se hoje não for o último dia do mês, recebe o mesmo
+  // ajuste pro-rata que qualquer lançamento (rende só a fração do mês que
+  // falta) - sacar exatamente o saldo bruto sobra um resíduo (positivo ou
+  // negativo) do tamanho desse ajuste. Resolvendo pra saldo final = 0:
+  // valor = saldoBruto / (1 + taxaMensal * fraçãoRestanteDoMês).
+  const zeroAmountByInvestment = useMemo(() => {
+    const today = new Date();
+    const dim = daysInMonth(today);
+    const fractionRemaining = (dim - today.getDate() + 1) / dim;
+    const indices = getIndicesForMonth(today, data.settings, data.realData);
+    const amounts = {};
+    data.investments.forEach((inv) => {
+      const gross = grossBalanceByInvestment[inv.id] || 0;
+      if (gross <= 0) { amounts[inv.id] = 0; return; }
+      const grossRate = monthlyReturnRate(inv, indices, today);
+      const feeMonthly = inv.custodyFeeAnnual ? annualToMonthly(inv.custodyFeeAnnual) : 0;
+      const rate = grossRate - feeMonthly;
+      amounts[inv.id] = gross / (1 + rate * fractionRemaining);
+    });
+    return amounts;
+  }, [data.settings, data.investments, data.realData, grossBalanceByInvestment]);
+
   const chartData = useMemo(() => {
     return projectionResult.rows.map((r, i) => {
       const realRow = realResult.rows[i];
@@ -114,10 +139,13 @@ export default function ProjectView({ projectId, onBack }) {
         label: r.date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
         projNominal: r.nominalBalance,
         projReal: r.realBalance,
+        projSemIR: r.realBalanceGross,
         realNominal: realRow.nominalBalance,
         realReal: realRow.realBalance,
+        realSemIR: realRow.realBalanceGross,
         proj2Nominal: hybridRow.nominalBalance,
         proj2Real: hybridRow.realBalance,
+        proj2SemIR: hybridRow.realBalanceGross,
       };
     });
   }, [projectionResult, realResult, hybridResult]);
@@ -138,6 +166,11 @@ export default function ProjectView({ projectId, onBack }) {
     proj: projectionResult.goalReal?.month ?? null,
     real: realResult.goalReal?.month ?? null,
     proj2: hybridResult.goalReal?.month ?? null,
+  }), [projectionResult, realResult, hybridResult]);
+  const goalMonthsSemIR = useMemo(() => ({
+    proj: projectionResult.goalRealGross?.month ?? null,
+    real: realResult.goalRealGross?.month ?? null,
+    proj2: hybridResult.goalRealGross?.month ?? null,
   }), [projectionResult, realResult, hybridResult]);
 
   const handleFetchReal = async () => {
@@ -223,6 +256,7 @@ export default function ProjectView({ projectId, onBack }) {
             goal={data.settings.goal}
             baseYear={baseYear}
             goalMonthsNominal={goalMonthsNominal}
+            goalMonthsSemIR={goalMonthsSemIR}
             goalMonthsReal={goalMonthsReal}
           />
         </>
@@ -240,6 +274,7 @@ export default function ProjectView({ projectId, onBack }) {
           onContributionsChange={(contributions) => setData((prev) => ({ ...prev, contributions }))}
           currentBalances={currentBalanceByInvestment}
           grossBalances={grossBalanceByInvestment}
+          zeroAmounts={zeroAmountByInvestment}
         />
       )}
 

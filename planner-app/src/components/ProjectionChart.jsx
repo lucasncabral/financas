@@ -47,7 +47,7 @@ function Chart({ data, dataKeyProj, dataKeyReal, dataKeyProj2, goal, yFormatter,
   );
 }
 
-export default function ProjectionChart({ chartData, goal, baseYear, goalMonthsNominal, goalMonthsReal }) {
+export default function ProjectionChart({ chartData, goal, baseYear, goalMonthsNominal, goalMonthsSemIR, goalMonthsReal }) {
   const money = (v) => `${Math.round(v / 1000)}k`;
   return (
     <div className="panel">
@@ -58,6 +58,14 @@ export default function ProjectionChart({ chartData, goal, baseYear, goalMonthsN
         <span><span className="legend-dot" style={{ background: 'var(--series-real)' }} />Real (seus aportes registrados + índices do Banco Central)</span>
       </div>
       <Chart data={chartData} dataKeyProj="projNominal" dataKeyProj2="proj2Nominal" dataKeyReal="realNominal" goal={goal} yFormatter={money} goalMonths={goalMonthsNominal} showGoalDots={false} />
+
+      <h2 style={{ marginTop: 28 }}>Saldo sem desconto de IR, a valor de {baseYear} (poder de compra)</h2>
+      <div className="legend-row">
+        <span><span className="legend-dot" style={{ background: 'var(--series-projetado)' }} />Projetado</span>
+        <span><span className="legend-dot" style={{ background: 'var(--series-projetado2)' }} />Projetado ajustado</span>
+        <span><span className="legend-dot" style={{ background: 'var(--series-real)' }} />Real</span>
+      </div>
+      <Chart data={chartData} dataKeyProj="projSemIR" dataKeyProj2="proj2SemIR" dataKeyReal="realSemIR" goal={goal} yFormatter={money} goalMonths={goalMonthsSemIR} />
 
       <h2 style={{ marginTop: 28 }}>Saldo líquido de IR, a valor de {baseYear} (poder de compra)</h2>
       <div className="legend-row">

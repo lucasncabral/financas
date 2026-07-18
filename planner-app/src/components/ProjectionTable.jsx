@@ -88,8 +88,8 @@ export default function ProjectionTable({ rows, baseYear }) {
                   <td>{formatBRLPrecise(r.interest)}</td>
                   <td>{formatBRLPrecise(r.nominalBalance)}</td>
                   <td>{formatBRLPrecise(r.netBalance)}</td>
-                  <td>{formatBRLPrecise(r.realBalance)}</td>
-                  <td>{formatPct(r.pctOfGoal, 1)}</td>
+                  <td>{formatBRLPrecise(r.realBalanceGross)}</td>
+                  <td>{formatPct(r.pctOfGoalGross, 1)}</td>
                   <td>{formatPct(r.ipca)}</td>
                   <td>{formatPct(r.cdi)}</td>
                   <td>{formatPct(r.selic)}</td>
@@ -105,7 +105,7 @@ export default function ProjectionTable({ rows, baseYear }) {
         </table>
       </div>
       <p className="help-text">* mês com dado real parcial (algum índice ainda não publicado) - os demais índices usam a média assumida.</p>
-      <p className="help-text">"Saldo líquido de IR" desconta o Imposto de Renda regressivo estimado sobre o ganho de cada investimento (0% pros isentos). "% da meta" e o saldo em valor de {baseYear} já são líquidos de IR e de inflação.</p>
+      <p className="help-text">"Saldo líquido de IR" desconta o Imposto de Renda regressivo estimado sobre o ganho de cada investimento (0% pros isentos). O saldo em valor de {baseYear} e o "% da meta" usam o saldo sem descontar o IR (só a inflação).</p>
     </div>
   );
 }

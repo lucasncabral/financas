@@ -339,7 +339,7 @@ function InvestmentCard({ inv, onUpdate, onRequestRemove, onToggleHidden, contri
   );
 }
 
-export default function InvestmentsPanel({ investments, onChange, contributions, onContributionsChange, currentBalances = {}, grossBalances = {} }) {
+export default function InvestmentsPanel({ investments, onChange, contributions, onContributionsChange, currentBalances = {}, grossBalances = {}, zeroAmounts = {} }) {
   // Mesmo saldo "valor hoje" mostrado em cada card (e usado pela Distribuição) -
   // não a soma bruta dos aportes, senão esse total não bate com o resto do app.
   const totalInvested = investments.reduce((s, inv) => {
@@ -392,9 +392,12 @@ export default function InvestmentsPanel({ investments, onChange, contributions,
     } else if (removeTarget.kind === 'contribution') {
       onContributionsChange(contributions.filter((c) => c.id !== removeTarget.id));
     } else if (removeTarget.kind === 'zero') {
-      const gross = grossBalances[removeTarget.id] || 0;
-      if (gross > 0) {
-        addContribution(removeTarget.id, { date: todayISO(), amount: -gross });
+      // Não é o saldo bruto puro - ver comentário de `zeroAmounts` em
+      // ProjectView.jsx: saca um pouco menos (ou mais) pra compensar o
+      // pro-rata do dia de hoje e o saldo final dar exatamente zero.
+      const amount = zeroAmounts[removeTarget.id] ?? grossBalances[removeTarget.id] ?? 0;
+      if (amount > 0) {
+        addContribution(removeTarget.id, { date: todayISO(), amount: -amount });
       }
     }
     setRemoveTarget(null);
