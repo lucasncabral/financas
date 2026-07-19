@@ -279,7 +279,7 @@ export default function ProjectView({ projectId, onBack }) {
       )}
 
       {tab === 'Distribuição' && (
-        <DistributionChart investments={visibleInvestments} balances={currentBalanceByInvestment} />
+        <DistributionChart investments={visibleInvestments} balances={grossBalanceByInvestment} />
       )}
 
       {tab === 'Projeção' && (

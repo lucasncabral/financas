@@ -195,7 +195,7 @@ function InvestmentCard({ inv, onUpdate, onRequestRemove, onToggleHidden, contri
     `${formatBRLPrecise(totalRegistered)} investidos`,
   ];
   if (inv.maturityDate) summaryParts.push(`vence em ${parseISODate(inv.maturityDate).toLocaleDateString('pt-BR')}`);
-  summaryParts.push(`valor hoje: ${formatBRLPrecise(currentBalance ?? totalRegistered)}`);
+  summaryParts.push(`valor hoje: ${formatBRLPrecise(grossBalance ?? totalRegistered)}`);
   if (inv.custodyFeeAnnual) summaryParts.push(`custódia ${Math.round(inv.custodyFeeAnnual * 10000) / 100}% a.a.`);
   if (inv.hidden) summaryParts.push('oculto da projeção');
 
@@ -340,10 +340,10 @@ function InvestmentCard({ inv, onUpdate, onRequestRemove, onToggleHidden, contri
 }
 
 export default function InvestmentsPanel({ investments, onChange, contributions, onContributionsChange, currentBalances = {}, grossBalances = {}, zeroAmounts = {} }) {
-  // Mesmo saldo "valor hoje" mostrado em cada card (e usado pela Distribuição) -
-  // não a soma bruta dos aportes, senão esse total não bate com o resto do app.
+  // Mesmo saldo bruto "valor hoje" mostrado em cada card - não o líquido
+  // (que já desconta o IR estimado) nem a soma pura dos aportes.
   const totalInvested = investments.reduce((s, inv) => {
-    const balance = currentBalances[inv.id];
+    const balance = grossBalances[inv.id];
     if (balance != null) return s + balance;
     const registered = contributions
       .filter((c) => c.investmentId === inv.id)
@@ -442,7 +442,7 @@ export default function InvestmentsPanel({ investments, onChange, contributions,
 
       {investments.length > 0 && (
         <p className="help-text" style={{ marginTop: 10 }}>
-          O "valor hoje" de cada investimento é líquido (já descontando o IR estimado) e usa o rendimento do mês fechado pela simulação - o cálculo é por mês, não dia a dia, então pode ficar um pouco diferente do extrato real quando visto no meio do mês.
+          O "valor hoje" de cada investimento é bruto (sem descontar o IR estimado) e usa o rendimento do mês fechado pela simulação - o cálculo é por mês, não dia a dia, então pode ficar um pouco diferente do extrato real quando visto no meio do mês.
         </p>
       )}
 
