@@ -118,7 +118,7 @@ p { color: var(--text-secondary); margin: 0; }
 .panel {
   background: var(--surface-1);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 20px;
   margin-bottom: 20px;
 }
@@ -149,6 +149,14 @@ p { color: var(--text-secondary); margin: 0; }
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 16px;
+}
+
+/* Campo fora da grade de parâmetros - não entra na simulação. */
+.field-standalone {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--border);
+  max-width: 320px;
 }
 
 label.field {
@@ -243,26 +251,24 @@ thead th {
 }
 .tag-remove:hover { opacity: 1; }
 
-.stat-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 14px;
+.section-heading {
+  margin: 22px 0 12px;
 }
 
-.goal-progress-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-}
+.section-heading h2 { margin-bottom: 2px; }
+.section-heading .help-text { margin: 0; }
+.section-heading .help-text strong { color: var(--text-secondary); font-weight: 600; }
+
+.goal-progress { padding: 16px 18px 8px; }
+.goal-progress .goal-card-caption { margin-top: 8px; }
 
 .goal-progress-pct {
-  font-size: 2rem;
+  font-size: 2.1rem;
   font-weight: 650;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   line-height: 1;
+  margin: 16px 0 10px;
 }
 
 .goal-progress-track {
@@ -290,42 +296,119 @@ thead th {
   transform: translateX(-1px);
 }
 
-.goal-progress-delta {
-  font-size: 0.8rem;
-  font-weight: 600;
-  margin-top: 2px;
-  color: var(--text-secondary);
+.goal-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
 }
 
-.goal-progress-delta.good { color: var(--good); }
-.goal-progress-delta.critical { color: var(--critical); }
-
-.stat-tile {
+.goal-card {
   background: var(--surface-1);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 16px 18px;
+  border-radius: 12px;
+  padding: 16px 18px 6px;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 140ms ease;
 }
 
-.stat-tile .label {
+.goal-card:hover { border-color: var(--baseline); }
+
+.goal-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.goal-card-title {
+  font-size: 0.78rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.goal-card-hint {
   font-size: 0.75rem;
   color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  margin-bottom: 6px;
+  margin: 3px 0 0;
 }
 
-.stat-tile .value {
-  font-size: 1.5rem;
-  font-weight: 650;
-  color: var(--text-primary);
-}
-
-.stat-tile .sub {
-  font-size: 0.8rem;
+.goal-card-badge {
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 3px 9px;
+  border-radius: 999px;
   color: var(--text-secondary);
-  margin-top: 4px;
+  background: color-mix(in srgb, var(--text-secondary) 10%, transparent);
 }
+
+.goal-card-badge.good { color: var(--good); background: color-mix(in srgb, var(--good) 14%, transparent); }
+.goal-card-badge.critical { color: var(--critical); background: color-mix(in srgb, var(--critical) 14%, transparent); }
+
+.goal-card-value {
+  font-size: 1.6rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--text-primary);
+  margin-top: 16px;
+}
+
+.goal-card-caption {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+.goal-card-rows {
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.goal-card-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 0;
+  font-size: 0.8rem;
+}
+
+.goal-card-row + .goal-card-row { border-top: 1px dashed var(--border); }
+
+.goal-card-row-name {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.goal-card-row-value {
+  margin-left: auto;
+  text-align: right;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.goal-card-row.is-primary .goal-card-row-value {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.goal-card-row-age {
+  margin-left: 6px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.goal-card-row-age::before { content: '· '; }
 
 .investments-list { display: flex; flex-direction: column; gap: 12px; }
 
@@ -349,7 +432,43 @@ thead th {
 .allocation-warning.ok { color: var(--good); }
 .allocation-warning.warn { color: var(--warning); background: color-mix(in srgb, var(--warning) 14%, transparent); }
 
-.chart-wrap { width: 100%; height: 300px; }
+/* Cada gráfico do resumo é um card, com o mesmo cabeçalho dos cards de meta. */
+.chart-stack {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.chart-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px 10px;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.chart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--text-secondary) 8%, transparent);
+  border-radius: 999px;
+  padding: 3px 9px 3px 7px;
+}
+
+.chart-legend-item .legend-dot { width: 8px; height: 8px; margin-right: 5px; }
+
+.chart-wrap { width: 100%; height: 300px; margin-top: 12px; }
 
 .legend-row {
   display: flex;

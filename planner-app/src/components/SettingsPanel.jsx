@@ -61,6 +61,12 @@ export default function SettingsPanel({ settings, onChange }) {
         </Field>
       </div>
 
+      <div className="field-standalone">
+        <Field label="Data de nascimento (opcional)" help="Só pra mostrar com que idade a meta é atingida - não entra na projeção">
+          <input type="date" value={settings.birthDate || ''} onChange={(e) => set('birthDate', e.target.value)} />
+        </Field>
+      </div>
+
       <div className="info-box">
         <strong>De onde vieram os valores padrão (CDI 11%, Selic 11,3%, IPCA 4%)?</strong>
         <p style={{ margin: '6px 0 0' }}>

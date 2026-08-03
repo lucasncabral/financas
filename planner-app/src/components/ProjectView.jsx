@@ -150,6 +150,14 @@ export default function ProjectView({ projectId, onBack }) {
     });
   }, [projectionResult, realResult, hybridResult]);
 
+  // Rótulo do eixo X correspondente a hoje - marca a linha vertical "Hoje" nos
+  // gráficos. Null se hoje cair fora do período simulado (plano que só começa
+  // no futuro, ou horizonte já vencido).
+  const todayLabel = useMemo(
+    () => chartData[currentMonthIndex - 1]?.label ?? null,
+    [chartData, currentMonthIndex]
+  );
+
   // Mês (1-indexado) em que cada linha bate a meta, pra marcar a bolinha nos
   // gráficos - um valor por linha, um conjunto pro gráfico nominal e outro
   // pro gráfico líquido de IR/inflação (metas diferentes: nominalBalance vs realBalance).
@@ -250,7 +258,6 @@ export default function ProjectView({ projectId, onBack }) {
       {tab === 'Resumo' && (
         <>
           <SummaryCards result={realResult} hybridResult={hybridResult} projectionResult={projectionResult} settings={data.settings} currentMonthIndex={currentMonthIndex} />
-          <div style={{ height: 20 }} />
           <ProjectionChart
             chartData={chartData}
             goal={data.settings.goal}
@@ -258,6 +265,7 @@ export default function ProjectView({ projectId, onBack }) {
             goalMonthsNominal={goalMonthsNominal}
             goalMonthsSemIR={goalMonthsSemIR}
             goalMonthsReal={goalMonthsReal}
+            todayLabel={todayLabel}
           />
         </>
       )}

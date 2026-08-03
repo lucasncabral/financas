@@ -260,22 +260,3 @@ export function findInflationAdjustedGoalMonth(rows, goal) {
   const row = rows.find((r) => r.nominalBalance >= goal * r.cumInflation);
   return row?.month ?? null;
 }
-
-export function monthsToYearsLabel(m) {
-  if (m == null) return 'Não atingido no horizonte simulado';
-  const years = Math.floor((m - 1) / 12);
-  const rem = (m - 1) % 12;
-  return `${years} ano${years === 1 ? '' : 's'} e ${rem} ${rem === 1 ? 'mês' : 'meses'}`;
-}
-
-// Tempo que falta a partir de hoje (não desde o início do plano) pra bater a
-// meta - `targetMonth` é o mês (1-indexado) em que a meta foi batida na
-// simulação, `currentMonthIndex` é o mês correspondente a hoje.
-export function remainingTimeLabel(targetMonth, currentMonthIndex) {
-  if (targetMonth == null) return 'Não atingida no horizonte simulado';
-  const remaining = targetMonth - currentMonthIndex;
-  if (remaining <= 0) return 'Meta já atingida';
-  const years = Math.floor(remaining / 12);
-  const rem = remaining % 12;
-  return `${years} ano${years === 1 ? '' : 's'} e ${rem} ${rem === 1 ? 'mês' : 'meses'}`;
-}
