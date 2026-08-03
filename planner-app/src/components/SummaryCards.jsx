@@ -134,7 +134,7 @@ function GoalProgress({ pct, monthLabel, balance, goal, projPct, projBalance, ba
           <span className="goal-card-row-name">Hoje</span>
           <span className="goal-card-row-value">
             {formatBRL(balance)}
-            <span className="goal-card-row-age">de {formatBRL(goal)} (valor de {baseYear})</span>
+            <span className="goal-card-row-age">de {formatBRL(goal)} ({baseYear})</span>
           </span>
         </div>
         {projBalance != null && (
@@ -169,13 +169,13 @@ export default function SummaryCards({ result, hybridResult, projectionResult, s
     },
     {
       title: `Sem IR · valor de ${baseYear}`,
-      hint: 'poder de compra de hoje, antes do imposto',
+      hint: 'poder de compra de hoje',
       estimate: hybridResult?.goalRealGross,
       plan: projectionResult?.goalRealGross,
     },
     {
       title: `Líquido de IR · valor de ${baseYear}`,
-      hint: 'poder de compra de hoje, já com o imposto pago',
+      hint: 'Com o imposto pago',
       estimate: hybridResult?.goalReal,
       plan: projectionResult?.goalReal,
     },
