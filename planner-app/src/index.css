@@ -209,7 +209,10 @@ thead th {
   background: var(--surface-1);
 }
 
+/* `position: relative` deixa o container ser o offsetParent das linhas - é o
+   que permite rolar até o mês atual sem arrastar a página junto. */
 .table-scroll {
+  position: relative;
   max-height: 480px;
   overflow: auto;
   border: 1px solid var(--gridline);
@@ -570,6 +573,21 @@ thead th {
   z-index: 20;
 }
 
+/* Balão pra baixo e ancorado à direita: dentro do cabeçalho da tabela (topo de
+   um container com overflow) um balão pra cima seria cortado, e um centrado
+   estouraria a borda direita nas últimas colunas. */
+.info-tooltip-bubble.is-below {
+  bottom: auto;
+  top: 150%;
+  left: auto;
+  right: -6px;
+  transform: none;
+  width: 200px;
+  white-space: normal;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 .info-tooltip:hover .info-tooltip-bubble,
 .info-tooltip:focus .info-tooltip-bubble,
 .info-tooltip:focus-visible .info-tooltip-bubble {
@@ -587,3 +605,255 @@ thead th {
 }
 
 .info-box strong { color: var(--text-primary); }
+
+/* ==========================================================================
+   Aba Projeção
+   ========================================================================== */
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* min-height mantém os títulos alinhados entre cards com e sem pílula. */
+.stat-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  min-height: 20px;
+}
+
+.stat-card-title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stat-card-value {
+  margin-top: 6px;
+  font-size: 1.4rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+
+.stat-card-caption {
+  margin-top: 3px;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.stat-card-foot {
+  margin-top: auto;
+  padding-top: 10px;
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+}
+
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.toolbar-spacer { flex: 1 1 auto; }
+
+.segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--muted) 14%, transparent);
+}
+
+.segmented button {
+  font-family: inherit;
+  font-size: 0.82rem;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.segmented button.active {
+  background: var(--surface-1);
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.14);
+}
+
+.btn.is-on {
+  border-color: var(--series-projetado);
+  color: var(--series-projetado);
+  background: color-mix(in srgb, var(--series-projetado) 10%, var(--surface-1));
+}
+
+/* --- Tabela ------------------------------------------------------------- */
+
+.projection-table {
+  /* Altura fixa da faixa de grupos: a segunda linha do cabeçalho gruda logo
+     abaixo dela, então as duas precisam concordar sobre esse valor. */
+  --thead-group-h: 24px;
+}
+
+.projection-table .col-group-row th {
+  height: var(--thead-group-h);
+  padding: 2px 10px;
+  font-size: 0.64rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  border-bottom: none;
+  top: 0;
+}
+
+.projection-table thead tr:last-child th { top: var(--thead-group-h); }
+
+.projection-table th:nth-child(2),
+.projection-table td:nth-child(2) { text-align: right; }
+
+.projection-table .col-group-row th { text-align: center; }
+
+.projection-table .col-sep { border-left: 1px solid var(--gridline); }
+
+/* O cabeçalho gruda no topo, mas nenhuma coluna gruda na lateral: a tabela
+   rola de lado inteira, mês/ano incluído. */
+.projection-table thead th { z-index: 3; }
+
+/* Marcador real/parcial/projetado como sombra interna, não borda: em tabela
+   com `border-collapse: collapse` as bordas laterais das células são
+   justamente o que os navegadores tendem a comer. O padding reserva o espaço. */
+.projection-table td:first-child { padding-left: 13px; }
+
+.projection-table .proj-row.is-real td:first-child { box-shadow: inset 3px 0 0 var(--series-real); }
+.projection-table .proj-row.is-partial td:first-child { box-shadow: inset 3px 0 0 var(--warning); }
+
+.cell-month-label { font-weight: 600; }
+.cell-month-sub { color: var(--muted); font-size: 0.72rem; margin-left: 6px; }
+.cell-month-badge { margin-left: 6px; }
+
+.row-chevron {
+  display: inline-block;
+  width: 10px;
+  margin-right: 4px;
+  color: var(--muted);
+  transition: transform 140ms ease;
+}
+
+.row-chevron.is-open { transform: rotate(90deg); }
+
+.num-negative { color: var(--critical); }
+.cell-index { color: var(--text-secondary); }
+
+/* Barra de progresso desenhada no próprio fundo da célula - dá pra escanear a
+   coluna inteira e ver a curva de aproximação da meta. */
+.cell-goal {
+  background-image: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--series-projetado) 20%, transparent) var(--goal-fill),
+    transparent var(--goal-fill)
+  );
+  background-repeat: no-repeat;
+}
+
+.proj-row.is-expandable { cursor: pointer; }
+.proj-row.is-expandable:focus-visible { outline: 2px solid var(--series-projetado); outline-offset: -2px; }
+
+.proj-row.is-nested td {
+  background-color: color-mix(in srgb, var(--muted) 7%, transparent);
+  font-size: 0.95em;
+}
+.proj-row.is-nested td:first-child { padding-left: 22px; }
+
+.proj-row.is-expandable:hover td {
+  background-color: color-mix(in srgb, var(--series-projetado) 8%, transparent);
+}
+
+.table-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  margin-top: 10px;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.legend-bar {
+  display: inline-block;
+  width: 3px;
+  height: 11px;
+  margin-right: 6px;
+  border-radius: 2px;
+  background: var(--baseline);
+  vertical-align: -1px;
+}
+
+.legend-bar.is-real { background: var(--series-real); }
+.legend-bar.is-partial { background: var(--warning); }
+.table-legend-hint { margin-left: auto; font-style: italic; }
+
+/* ==========================================================================
+   Telas estreitas
+   ========================================================================== */
+
+@media (max-width: 720px) {
+  #root { padding: 16px 12px 48px; }
+
+  h1 { font-size: 1.3rem; }
+  h2 { font-size: 1rem; }
+
+  .app-header { margin-bottom: 16px; }
+  .header-actions { width: 100%; }
+  .header-actions .btn { flex: 1 1 40%; }
+
+  .panel { padding: 14px; border-radius: 10px; }
+
+  .tab-btn { padding: 10px 12px; font-size: 0.88rem; }
+
+  .stat-grid { gap: 10px; margin-bottom: 16px; }
+  .stat-card { padding: 12px 13px; }
+  .stat-card-value { font-size: 1.15rem; }
+  .stat-card-foot { padding-top: 8px; font-size: 0.72rem; }
+
+  .table-toolbar { gap: 6px; }
+  .table-toolbar .toolbar-spacer { display: none; }
+  .table-toolbar .segmented { flex: 1 1 100%; }
+  .table-toolbar .segmented button { flex: 1 1 0; }
+  .table-toolbar .btn { flex: 1 1 0; padding: 8px 6px; font-size: 0.8rem; }
+
+  .table-scroll { max-height: 70vh; }
+  th, td { padding: 6px 8px; }
+  table { font-size: 0.8rem; }
+
+  .chart-wrap { height: 240px; }
+  .chart-card { padding: 14px 13px 8px; }
+  .chart-legend { justify-content: flex-start; margin-left: 0; }
+
+  .goal-card { padding: 14px 15px 6px; }
+  .goal-progress { padding: 14px 15px 8px; }
+  .goal-progress-pct { font-size: 1.8rem; }
+}

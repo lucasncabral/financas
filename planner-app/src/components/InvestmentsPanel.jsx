@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { INVESTMENT_TYPES, INVESTMENT_TYPE_LABELS, DEFAULT_REINVEST_SPREAD_ANNUAL, formatBRLPrecise, parseISODate } from '../lib/finance';
 import { newInvestmentId, newContributionId } from '../lib/storage';
 import ConfirmDialog from './ConfirmDialog';
+import InfoTooltip from './InfoTooltip';
 
 const RATE_HELP = {
   [INVESTMENT_TYPES.CDI_PCT]: { label: '% do CDI', placeholder: 'ex: 120 = 120% do CDI', factor: 100 },
@@ -49,19 +50,6 @@ function TagBadge({ tag, onRemove }) {
       {onRemove && (
         <button type="button" className="tag-remove" onClick={onRemove} aria-label={`Remover tag ${tag}`}>×</button>
       )}
-    </span>
-  );
-}
-
-function InfoTooltip({ text }) {
-  return (
-    <span className="info-tooltip" tabIndex={0}>
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10" />
-        <line x1="12" y1="16" x2="12" y2="11" />
-        <line x1="12" y1="8" x2="12.01" y2="8" />
-      </svg>
-      <span className="info-tooltip-bubble">{text}</span>
     </span>
   );
 }

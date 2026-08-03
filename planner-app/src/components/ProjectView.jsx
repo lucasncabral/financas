@@ -291,7 +291,13 @@ export default function ProjectView({ projectId, onBack }) {
       )}
 
       {tab === 'Projeção' && (
-        <ProjectionTable rows={realResult.rows} baseYear={baseYear} />
+        <ProjectionTable
+          rows={realResult.rows}
+          planRows={projectionResult.rows}
+          baseYear={baseYear}
+          settings={data.settings}
+          currentMonthIndex={currentMonthIndex}
+        />
       )}
     </>
   );

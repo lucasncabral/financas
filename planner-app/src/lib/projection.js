@@ -158,6 +158,7 @@ export function simulate(settings, investments, { realData = null, contributions
     const dim = daysInMonth(date);
 
     let monthInterest = 0;
+    let monthInvestedBase = 0;
     let nominalTotal = 0;
     let netTotal = 0;
     const taxByInvestment = simInvestments.map(() => 0);
@@ -171,10 +172,18 @@ export function simulate(settings, investments, { realData = null, contributions
       // rende (diasDoMês - D + 1)/diasDoMês desse mês; um saque no dia D "devolve"
       // proporcionalmente os juros do saldo cheio que já tinham sido creditados
       // pra ele em `invBalances[i] * rate` acima (mesma fórmula, valor negativo).
+      let weightedFlow = 0;
       (flowEvents?.[i] || []).forEach(({ day, amount }) => {
         const fractionRemaining = (dim - day + 1) / dim;
         interest += amount * rate * fractionRemaining;
+        weightedFlow += amount * fractionRemaining;
       });
+      // Capital que de fato ficou aplicado no mês: saldo de abertura mais cada
+      // lançamento pesado pela fração do mês em que esteve na carteira - é
+      // exatamente o valor que, multiplicado pela taxa, dá o `interest` acima.
+      // Serve de denominador pra medir a rentabilidade realizada sem que um
+      // aporte grande no meio do mês apareça como rendimento extra.
+      monthInvestedBase += invBalances[i] + weightedFlow;
       const balanceBeforeFlow = invBalances[i] + interest;
       invBalances[i] = balanceBeforeFlow + contributionShares[i];
       monthInterest += interest;
@@ -219,6 +228,7 @@ export function simulate(settings, investments, { realData = null, contributions
       contribution: monthContribution,
       plannedContribution,
       interest: monthInterest,
+      investedBase: monthInvestedBase,
       nominalBalance: nominalTotal,
       netBalance: netTotal,
       realBalance: realTotal,
