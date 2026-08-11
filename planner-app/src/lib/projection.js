@@ -43,8 +43,8 @@ function indexContributions(contributions) {
 
 // Simula a carteira mês a mês.
 //
-// mode 'plan' (padrão): usa o aporte teórico (cresce com inflação + crescimento
-//   real definidos em Parâmetros) - é a linha "Projetado", o plano original.
+// mode 'plan' (padrão): usa o aporte teórico (cresce com o IPCA + o crescimento
+//   real definido em Parâmetros) - é a linha "Projetado", o plano original.
 //   Esse aporte não pertence a nenhum investimento específico (não faz sentido
 //   assumir por décadas a taxa de um produto que você tem hoje, tipo uma
 //   oferta promocional de banco) - ele é simulado como uma única aplicação
@@ -92,7 +92,7 @@ function indexContributions(contributions) {
 export function simulate(settings, investments, { realData = null, contributions = null, mode = 'plan', todayMonthIndex = Infinity } = {}) {
   const startDate = parseISODate(settings.startDate);
   const months = settings.horizonYears * 12;
-  const nominalGrowthMonthly = ((1 + settings.assumedInflationAnnual) * (1 + settings.contributionRealGrowthAnnual)) ** (1 / 12) - 1;
+  const realGrowthMonthly = annualToMonthly(settings.contributionRealGrowthAnnual);
   const contribByMonth = (mode === 'actual' || mode === 'hybrid') ? indexContributions(contributions) : null;
 
   // No modo 'plan' simulamos uma única aplicação genérica (ver comentário
@@ -114,13 +114,22 @@ export function simulate(settings, investments, { realData = null, contributions
   const weightedTimeSum = simInvestments.map(() => 0); // soma(valor_aporte * timestamp) p/ idade média ponderada
   let cumInflation = 1;
   let cumContribution = 0;
+  // IPCA acumulado que corrige o aporte - ver `plannedContribution` no loop.
+  let contributionInflation = 1;
 
   const rows = [];
 
   for (let m = 1; m <= months; m++) {
     const date = addMonths(startDate, m - 1);
     const indices = getIndicesForMonth(date, settings, realData);
-    const plannedContribution = settings.monthlyContribution * Math.pow(1 + nominalGrowthMonthly, m - 1);
+    // Aporte teórico do mês: corrigido pelo IPCA acumulado até o mês anterior
+    // mais o crescimento real. Sem defasagem de divulgação - o mês que ainda
+    // não tem IPCA lançado entra pela inflação assumida (`getIndicesForMonth`),
+    // e passa a usar o número real assim que ele for registrado. Assim o plano
+    // fica neutro a IPCA em termos reais: o aporte e o rendimento da aplicação
+    // genérica (IPCA + 5% a.a.) sobem juntos com a inflação, então revisar um
+    // mês de IPCA não antecipa nem atrasa a data em que a meta é batida.
+    const plannedContribution = settings.monthlyContribution * contributionInflation * Math.pow(1 + realGrowthMonthly, m - 1);
 
     if (mode === 'hybrid' && m === todayMonthIndex + 1) {
       // Consolidação única: tudo que os investimentos reais têm acumulado até
@@ -217,6 +226,7 @@ export function simulate(settings, investments, { realData = null, contributions
     const monthContribution = contributionShares.reduce((a, b) => a + b, 0);
     cumContribution += monthContribution;
     cumInflation *= 1 + indices.ipca;
+    contributionInflation *= 1 + indices.ipca;
 
     const realTotal = netTotal / cumInflation;
     const realTotalGross = nominalTotal / cumInflation; // valor de hoje, mas sem descontar IR
